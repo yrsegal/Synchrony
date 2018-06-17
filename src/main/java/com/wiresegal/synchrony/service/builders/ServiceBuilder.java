@@ -5,12 +5,14 @@ import com.google.common.collect.Sets;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.wiresegal.synchrony.application.SynchronyApplication;
+import com.wiresegal.synchrony.authentication.AuthenticationLevel;
 import com.wiresegal.synchrony.service.ServiceContext;
 import com.wiresegal.synchrony.service.WebService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Connection.Method;
 
+import javax.servlet.http.HttpServletResponse;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -70,6 +72,12 @@ public class ServiceBuilder {
      */
     @Nullable
     protected Consumer<ServiceContext> action = null;
+
+    /**
+     * What level of authentication a user must have to perform this service.
+     */
+    @NotNull
+    protected AuthenticationLevel commandLevel = AuthenticationLevel.NONE;
 
     /**
      * @param method The method this service will receive on.
@@ -156,6 +164,17 @@ public class ServiceBuilder {
     }
 
     /**
+     * Describes the service as requiring authentication.
+     *
+     * @param level The level required.
+     * @return The builder.
+     */
+    public ServiceBuilder authenticationRequired(AuthenticationLevel level) {
+        this.commandLevel = level;
+        return this;
+    }
+
+    /**
      * Creates a service from the provided data.
      *
      * @return The created service.
@@ -179,7 +198,10 @@ public class ServiceBuilder {
 
             @Override
             public void performAction(ServiceContext context) {
-                action.accept(context);
+                if (context.authenticated(commandLevel))
+                    action.accept(context);
+                else
+                    context.error(HttpServletResponse.SC_UNAUTHORIZED);
             }
         };
     }

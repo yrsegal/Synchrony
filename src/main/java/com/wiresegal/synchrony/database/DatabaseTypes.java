@@ -81,7 +81,7 @@ public final class DatabaseTypes {
         if (location.exists() || location.getParentFile().mkdirs()) {
             FileOutputStream stream = new FileOutputStream(location);
             GZIPOutputStream gz = new GZIPOutputStream(stream);
-            write(database, "", gz);
+            write(database, "*", gz);
             gz.close();
             stream.close();
         }
@@ -99,7 +99,7 @@ public final class DatabaseTypes {
         if (location.exists() || location.getParentFile().mkdirs()) {
             FileInputStream stream = new FileInputStream(location);
             GZIPInputStream gz = new GZIPInputStream(stream);
-            Database<? extends DatabaseObject> db = read(gz, "", TypeToken.getParameterized(Database.class, clazz));
+            Database<? extends DatabaseObject> db = read(gz, "*", TypeToken.getParameterized(Database.class, clazz));
             gz.close();
             stream.close();
 
@@ -156,7 +156,7 @@ public final class DatabaseTypes {
             while (target != null) {
                 for (Field field : target.getDeclaredFields()) {
                     if (field.isAnnotationPresent(Save.class)) {
-                        targets.put(field.getName(), Sets.newHashSet());
+                        targets.put(field.getName(), Sets.newHashSet("*"));
                         for (Save save : field.getAnnotationsByType(Save.class))
                             targets.get(field.getName()).add(save.target());
                     }
@@ -171,7 +171,7 @@ public final class DatabaseTypes {
          * @return Whether to serialize that field.
          */
         public boolean applies(@NotNull String str, @NotNull String target) {
-            return targets.containsKey(str) && (targets.get("").contains(target) || targets.get(str).contains(target));
+            return targets.containsKey(str) && (targets.get(str).contains("") || targets.get(str).contains(target));
         }
     }
 

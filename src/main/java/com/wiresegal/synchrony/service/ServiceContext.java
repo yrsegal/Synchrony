@@ -3,6 +3,7 @@ package com.wiresegal.synchrony.service;
 import com.google.gson.JsonElement;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonWriter;
+import com.wiresegal.synchrony.authentication.AuthenticationLevel;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -167,5 +168,17 @@ public final class ServiceContext {
         } catch (IOException ignored) {
             // NO-OP
         }
+    }
+
+    /**
+     * @param level The level the user needs.
+     * @return Whether the user has that level or not.
+     */
+    public boolean authenticated(AuthenticationLevel level) {
+        Object l = session.getAttribute("auth");
+        if (!(l instanceof AuthenticationLevel))
+            return false;
+        return ((AuthenticationLevel) l).compareTo(level) >= 0;
+
     }
 }

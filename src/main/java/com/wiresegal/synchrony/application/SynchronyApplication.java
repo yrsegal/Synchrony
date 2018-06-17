@@ -2,6 +2,8 @@ package com.wiresegal.synchrony.application;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.wiresegal.synchrony.authentication.AuthenticationLevel;
+import com.wiresegal.synchrony.authentication.Authenticator;
 import com.wiresegal.synchrony.database.Database;
 import com.wiresegal.synchrony.database.DatabaseObject;
 import com.wiresegal.synchrony.database.DatabaseTypes;
@@ -15,11 +17,14 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static com.wiresegal.synchrony.authentication.AuthenticationLevel.NONE;
 
 /**
  * The base class for a Synchrony servlet. Create services and data fields in init().
@@ -123,6 +128,8 @@ public abstract class SynchronyApplication extends HttpServlet {
                 .collect(Collectors.toSet());
     }
 
+    private static final Pattern AUTHORIZATION = Pattern.compile("Basic ([\\w+/]={0,2})");
+
     /**
      * Executes a service from request data.
      *
@@ -133,6 +140,37 @@ public abstract class SynchronyApplication extends HttpServlet {
      */
     private void executeService(Connection.Method method, HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
+
+        String authorizationHeader = req.getHeader("Authorization");
+        if (authorizationHeader != null) {
+            Matcher result = AUTHORIZATION.matcher(authorizationHeader);
+            if (result.matches()) {
+                Database<Authenticator> authenticators = database(Authenticator.class);
+                String b64 = result.group(1);
+                String[] userData = new String(Base64.getDecoder().decode(b64)).split(":");
+                if (userData.length == 2) {
+                    String email = userData[0];
+                    String pass = userData[1];
+
+                    HttpSession session = req.getSession();
+                    Object l = session.getAttribute("auth");
+                    AuthenticationLevel level = l instanceof AuthenticationLevel ? (AuthenticationLevel) l : NONE;
+
+                    Optional<AuthenticationLevel> auth = authenticators.stream()
+                            .map(authenticator -> authenticator.authenticate(email, pass))
+                            .filter(authLevel -> authLevel.compareTo(NONE) > 0)
+                            .findFirst();
+                    if (auth.isPresent()) {
+                        if (auth.get().compareTo(level) > 0)
+                            session.setAttribute("auth", auth.get());
+                    } else {
+                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                        return;
+                    }
+                }
+            }
+        }
+
         String requestKey = req.getHttpServletMapping().getMatchValue();
         if (requestKey.startsWith("/"))
             requestKey = requestKey.substring(1);
