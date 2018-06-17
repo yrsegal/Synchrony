@@ -3,11 +3,17 @@ package com.wiresegal.synchrony.database;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import javax.servlet.ServletContext;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Serialization utilities involving {@link Save}.
@@ -26,20 +32,92 @@ public final class DatabaseTypes {
      * @return The serialized json.
      */
     @NotNull
-    public static JsonElement write(@NotNull DatabaseObject object, @NotNull String target) {
+    public static JsonElement write(@NotNull Object object, @NotNull String target) {
         return forTarget(target).toJsonTree(object);
+    }
+
+    /**
+     * @param object The object to serialize.
+     * @param target The target to serialize to. Use an empty string for "default."
+     * @param stream The stream to write out to.
+     */
+    public static void write(@NotNull Object object, @NotNull String target, @NotNull OutputStream stream) {
+        forTarget(target).toJson(object, new OutputStreamWriter(stream));
     }
 
     /**
      * @param object The json data to read from.
      * @param target The target to serialize to. Use an empty string for "default".
-     * @param clazz  The type of the object.
+     * @param type   The type of the object.
      * @param <T>    The type of the object.
      * @return The deserialized object.
      */
     @NotNull
-    public static <T extends DatabaseObject> T read(@NotNull JsonElement object, @NotNull String target, @NotNull Class<T> clazz) {
-        return forTarget(target).fromJson(object, clazz);
+    public static <T> T read(@NotNull JsonElement object, @NotNull String target, @NotNull TypeToken<T> type) {
+        return forTarget(target).fromJson(object, type.getType());
+    }
+
+    /**
+     * @param stream The stream to read json data from.
+     * @param target The target to serialize to. Use an empty string for "default".
+     * @param type   The type of the object.
+     * @param <T>    The type of the object.
+     * @return The deserialized object.
+     */
+    @NotNull
+    public static <T> T read(@NotNull InputStream stream, @NotNull String target, @NotNull TypeToken<?> type) {
+        return forTarget(target).fromJson(new InputStreamReader(stream), type.getType());
+    }
+
+    /**
+     * @param clazz    The database type.
+     * @param database The database object to write out.
+     * @param context  The context of the servlet, used to gain relative paths.
+     * @param <T>      The type of the database.
+     * @throws IOException If file IO failed.
+     */
+    public static <T extends DatabaseObject> void writeDatabase(Class<T> clazz, Database<?> database, ServletContext context) throws IOException {
+        File location = databaseFile(clazz, context);
+        if (location.exists() || location.getParentFile().mkdirs()) {
+            FileOutputStream stream = new FileOutputStream(location);
+            GZIPOutputStream gz = new GZIPOutputStream(stream);
+            write(database, "", gz);
+            gz.close();
+            stream.close();
+        }
+    }
+
+    /**
+     * @param clazz   The database type.
+     * @param context The context of the servlet, used to gain relative paths.
+     * @return The database read out, or null if none could be read.
+     * @throws IOException If file IO failed.
+     */
+    @Nullable
+    public static Database<? extends DatabaseObject> readDatabase(Class<? extends DatabaseObject> clazz, ServletContext context) throws IOException {
+        File location = databaseFile(clazz, context);
+        if (location.exists() || location.getParentFile().mkdirs()) {
+            FileInputStream stream = new FileInputStream(location);
+            GZIPInputStream gz = new GZIPInputStream(stream);
+            Database<? extends DatabaseObject> db = read(gz, "", TypeToken.getParameterized(Database.class, clazz));
+            gz.close();
+            stream.close();
+
+            return db;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param clazz   The class getting a database
+     * @param context The context of the servlet, used to gain relative paths.
+     * @return The location of the database.
+     */
+    public static File databaseFile(Class<?> clazz, ServletContext context) {
+        String name = clazz.getSimpleName().toLowerCase() + ".json.gz";
+        String realPath = context.getRealPath("/");
+        return new File(name, realPath);
     }
 
     /**
@@ -62,7 +140,6 @@ public final class DatabaseTypes {
                 .registerTypeAdapterFactory(new DatabaseAdapterFactory())
                 .create());
     }
-
 
     /**
      * Cached data on annotated class fields.

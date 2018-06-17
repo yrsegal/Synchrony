@@ -2,10 +2,15 @@ package com.wiresegal.synchrony.application;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.wiresegal.synchrony.database.Database;
+import com.wiresegal.synchrony.database.DatabaseObject;
+import com.wiresegal.synchrony.database.DatabaseTypes;
 import com.wiresegal.synchrony.service.ServiceContext;
 import com.wiresegal.synchrony.service.WebService;
+import org.jetbrains.annotations.NotNull;
 import org.jsoup.Connection;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -26,6 +31,8 @@ public abstract class SynchronyApplication extends HttpServlet {
     private final Map<String, Set<Connection.Method>> options = Maps.newHashMap();
     private final Map<Connection.Method, Map<String, WebService>> services = Maps.newHashMap();
 
+    private final Map<Class<? extends DatabaseObject>, Database> databases = Maps.newHashMap();
+
     /**
      * Set up your Services and Data Fields here.
      *
@@ -36,7 +43,33 @@ public abstract class SynchronyApplication extends HttpServlet {
 
     // ==== Boilerplate
 
-    // todo data fields
+    /**
+     * Register a database for a given database type.
+     * Loading from stored Synchrony data will be handled if this is called in init.
+     *
+     * @param clazz    The class of the database information.
+     * @param database The new database we are trying to register.
+     * @param <T>      The database object type.
+     * @return The existing database, or the new database, if none was present.
+     */
+    @NotNull
+    @SuppressWarnings("unchecked")
+    public <T extends DatabaseObject> Database<T> database(@NotNull Class<T> clazz, @NotNull Database<T> database) {
+        return (Database<T>) databases.computeIfAbsent(clazz, cs -> database);
+    }
+
+    /**
+     * Register and get a default database for a given database type.
+     * Loading from stored Synchrony data will be handled if this is called in init.
+     *
+     * @param clazz The class of the database information.
+     * @param <T>   The database object type.
+     * @return The existing database, or the new database, if none was present.
+     */
+    @NotNull
+    public <T extends DatabaseObject> Database<T> database(@NotNull Class<T> clazz) {
+        return database(clazz, new Database<>());
+    }
 
     /**
      * Subscribes a service to the handlers for this servlet. This should not be called directly.
@@ -48,6 +81,34 @@ public abstract class SynchronyApplication extends HttpServlet {
     public void addService(Connection.Method method, String path, WebService service) {
         options.computeIfAbsent(path, (p) -> Sets.newHashSet()).add(method);
         services.computeIfAbsent(method, (m) -> Maps.newHashMap()).put(path, service);
+    }
+
+    // ==== Internals
+
+
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        super.init(config);
+        try {
+            for (Map.Entry<Class<? extends DatabaseObject>, Database> entry : databases.entrySet()) {
+                Database<?> db = DatabaseTypes.readDatabase(entry.getKey(), config.getServletContext());
+                if (db != null)
+                    entry.setValue(db);
+            }
+        } catch (IOException e) {
+            throw new ServletException(e);
+        }
+    }
+
+    @Override
+    public void destroy() {
+        super.destroy();
+        try {
+            for (Map.Entry<Class<? extends DatabaseObject>, Database> entry : databases.entrySet())
+                DatabaseTypes.writeDatabase(entry.getKey(), entry.getValue(), getServletContext());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -109,11 +170,6 @@ public abstract class SynchronyApplication extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         executeService(Connection.Method.GET, req, resp);
-    }
-
-    @Override
-    protected void doHead(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        executeService(Connection.Method.HEAD, req, resp);
     }
 
     @Override
