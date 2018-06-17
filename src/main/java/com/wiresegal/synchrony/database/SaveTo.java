@@ -1,11 +1,14 @@
 package com.wiresegal.synchrony.database;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * @author Wire Segal
- *
  * The container annotation for Save.
+ *
+ * @author Wire Segal
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

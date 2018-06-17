@@ -11,9 +11,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * A shared interface for all web actions and views.
+ * Specifies parameters and the action that can then be taken.
+ *
  * @author Wire Segal
- * <p>
- * A shared interface for all web actions and views. Specifies parameters and the action that can then be taken.
  */
 public interface WebService {
 

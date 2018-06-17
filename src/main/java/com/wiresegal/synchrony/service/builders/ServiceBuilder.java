@@ -11,7 +11,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Connection.Method;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -19,26 +18,58 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
+ * A generic superclass for service builders, such as views or actions.
+ *
  * @author Wire Segal
- * <p>
- * An abstract superclass for service builders, such as views or actions.
  */
-public abstract class ServiceBuilder {
+public class ServiceBuilder {
+    /**
+     * The HTTP method which the service listens on.
+     */
     @NotNull
-    private final Method method;
+    protected final Method method;
+
+    /**
+     * The webpath the service listens on.
+     * This cannot have trailing or leading slashes.
+     */
     @NotNull
-    private final String path;
+    protected final String path;
+
+    /**
+     * The name of this service. This is only used by documentation.
+     */
     @NotNull
-    private final String name;
+    protected final String name;
+
+    /**
+     * The parameters this service requires.
+     */
     @NotNull
-    private final Set<String> parameters = Sets.newHashSet();
+    protected final Set<String> parameters = Sets.newHashSet();
+
+    /**
+     * Optional parameters and default values this service can accept.
+     * Values may be null. Keys may not be null.
+     */
     @NotNull
-    private final Map<String, String> optional = Maps.newHashMap();
+    protected final Map<String, String> optional = Maps.newHashMap();
+    /**
+     * The description of this service. This is only used by documentation.
+     */
     @Nullable
-    private String description = null;
-    private boolean varies = false;
+    protected String description = null;
+
+    /**
+     * Whether the data of this web page shouldn't be cached.
+     */
+    protected boolean varies = false;
+
+    /**
+     * The action to take when this service is run.
+     */
     @Nullable
-    private Consumer<ServiceContext> action = null;
+    protected Consumer<ServiceContext> action = null;
 
     /**
      * @param method The method this service will receive on.
@@ -130,7 +161,28 @@ public abstract class ServiceBuilder {
      * @return The created service.
      */
     @NotNull
-    protected abstract WebService build();
+    protected WebService build() {
+        assert action != null;
+
+        Consumer<ServiceContext> action = this.action;
+
+        return new WebService() {
+            @Override
+            public @NotNull Collection<String> requiredParameters() {
+                return ServiceBuilder.this.parameters;
+            }
+
+            @Override
+            public @NotNull Map<String, String> optionalParameters() {
+                return ServiceBuilder.this.optional;
+            }
+
+            @Override
+            public void performAction(ServiceContext context) {
+                action.accept(context);
+            }
+        };
+    }
 
     /**
      * Creates an OPTIONS service from the provided data.
@@ -189,7 +241,7 @@ public abstract class ServiceBuilder {
         }
 
         @Override
-        public void performAction(ServiceContext context) throws IOException {
+        public void performAction(ServiceContext context) {
             context.send(documentation);
         }
     }

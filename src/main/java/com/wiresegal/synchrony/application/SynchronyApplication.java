@@ -17,9 +17,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * @author Wire Segal
- * <p>
  * The base class for a Synchrony servlet. Create services and data fields in init().
+ *
+ * @author Wire Segal
  */
 public abstract class SynchronyApplication extends HttpServlet {
 

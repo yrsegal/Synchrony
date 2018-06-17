@@ -3,9 +3,9 @@ package com.wiresegal.synchrony.database;
 import java.lang.annotation.*;
 
 /**
- * @author Wire Segal
- *
  * The repeatable meta-magic annotation for serialization.
+ *
+ * @author Wire Segal
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

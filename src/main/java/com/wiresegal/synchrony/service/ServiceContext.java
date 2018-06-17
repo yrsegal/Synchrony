@@ -15,9 +15,9 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 /**
- * @author Wire Segal
- * <p>
  * A context object that contains all information a service needs, including the session.
+ *
+ * @author Wire Segal
  */
 public final class ServiceContext {
     @NotNull
@@ -65,13 +65,16 @@ public final class ServiceContext {
      * Send a json object as a response. This also marks the response as json data.
      *
      * @param json The object to send.
-     * @throws IOException If the response writer cannot be acquired
      */
-    public void send(JsonElement json) throws IOException {
-        markAs("application/json");
-        JsonWriter writer = new JsonWriter(response.getWriter());
-        writer.setLenient(true);
-        Streams.write(json, writer);
+    public void send(JsonElement json) {
+        try {
+            markAs("application/json");
+            JsonWriter writer = new JsonWriter(response.getWriter());
+            writer.setLenient(true);
+            Streams.write(json, writer);
+        } catch (IOException ignored) {
+            // NO-OP
+        }
     }
 
     /**
@@ -95,8 +98,48 @@ public final class ServiceContext {
      * @return The parameter value. May be null.
      */
     @Nullable
-    public String getParameter(String key) {
+    public String getParameter(@NotNull String key) {
         return parameterValues.get(key);
+    }
+
+    /**
+     * @param key The parameter key to get
+     * @return The parameter value, or -1 if null.
+     */
+    public int getIntParameter(@NotNull String key) {
+        String data = getParameter(key);
+        if (data == null)
+            return -1;
+
+        try {
+            return Integer.parseInt(data);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * @param key The parameter key to get
+     * @return The parameter value, or -1 if null.
+     */
+    public long getLongParameter(@NotNull String key) {
+        String data = getParameter(key);
+        if (data == null)
+            return -1;
+
+        try {
+            return Long.parseLong(data);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * @param key The parameter key to get
+     * @return Whether the parameter exists.
+     */
+    public boolean getBooleanParameter(@NotNull String key) {
+        return getParameter(key) != null;
     }
 
     /**
@@ -113,5 +156,16 @@ public final class ServiceContext {
     @NotNull
     public HttpSession getSession() {
         return session;
+    }
+
+    /**
+     * @param errorCode The error code to send back.
+     */
+    public void error(int errorCode) {
+        try {
+            response.sendError(errorCode);
+        } catch (IOException ignored) {
+            // NO-OP
+        }
     }
 }
