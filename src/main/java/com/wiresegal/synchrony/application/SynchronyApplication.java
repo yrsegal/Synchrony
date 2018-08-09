@@ -171,7 +171,7 @@ public abstract class SynchronyApplication extends HttpServlet {
             }
         }
 
-        String requestKey = req.getHttpServletMapping().getMatchValue();
+        String requestKey = req.getRequestURI();
         if (requestKey.startsWith("/"))
             requestKey = requestKey.substring(1);
         if (requestKey.endsWith("/"))
