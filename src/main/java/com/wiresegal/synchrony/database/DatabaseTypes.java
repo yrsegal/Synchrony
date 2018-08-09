@@ -117,7 +117,7 @@ public final class DatabaseTypes {
     public static File databaseFile(Class<?> clazz, ServletContext context) {
         String name = clazz.getSimpleName().toLowerCase() + ".json.gz";
         String realPath = context.getRealPath("/");
-        return new File(name, realPath);
+        return new File(realPath, name);
     }
 
     /**
