@@ -128,7 +128,7 @@ public abstract class SynchronyApplication extends HttpServlet {
                 .collect(Collectors.toSet());
     }
 
-    private static final Pattern AUTHORIZATION = Pattern.compile("Basic ([\\w+/]={0,2})");
+    private static final Pattern AUTHORIZATION = Pattern.compile("Basic ([\\w+/]+={0,2})");
 
     /**
      * Executes a service from request data.
