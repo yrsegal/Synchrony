@@ -176,8 +176,7 @@ public final class ServiceContext {
      */
     public boolean authenticated(AuthenticationLevel level) {
         Object l = session.getAttribute("auth");
-        if (!(l instanceof AuthenticationLevel))
-            return false;
+        AuthenticationLevel level = l instanceof AuthenticationLevel ? (AuthenticationLevel) l : AuthenticationLevel.NONE;
         return ((AuthenticationLevel) l).compareTo(level) >= 0;
 
     }
