@@ -177,7 +177,20 @@ public abstract class SynchronyApplication extends HttpServlet {
         if (requestKey.endsWith("/"))
             requestKey = requestKey.substring(0, requestKey.length() - 1);
 
-        Set<String> options = getOptions(requestKey);
+        String excessPath = "";
+        String trueRequest = requestKey;
+        while (!trueRequest.isEmpty() && !options.containsKey(trueRequest)) {
+            int pos = trueRequest.lastIndexOf('/');
+            if (pos > 0) {
+                trueRequest = trueRequest.substring(0, pos);
+                excessPath = trueRequest.substring(pos) + excessPath;
+            } else {
+                resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+        }
+
+        Set<String> options = getOptions(trueRequest);
         if (options.isEmpty()) {
             resp.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
@@ -191,14 +204,14 @@ public abstract class SynchronyApplication extends HttpServlet {
             return;
         }
 
-        WebService handler = handlers.get(requestKey);
+        WebService handler = handlers.get(trueRequest);
         if (handler == null) {
             resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
             return;
         }
 
         try {
-            ServiceContext context = new ServiceContext(handler, req, resp);
+            ServiceContext context = new ServiceContext(handler, excessPath, req, resp);
             handler.performAction(context);
         } catch (IllegalArgumentException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST);

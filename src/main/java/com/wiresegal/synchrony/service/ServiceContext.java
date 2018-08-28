@@ -22,6 +22,8 @@ import java.util.Map;
  */
 public final class ServiceContext {
     @NotNull
+    private final String excessPath;
+    @NotNull
     private final HttpServletRequest request;
     @NotNull
     private final HttpServletResponse response;
@@ -34,14 +36,16 @@ public final class ServiceContext {
     private final HttpSession session;
 
     /**
-     * @param service  The service handling the request.
-     * @param request  The request which holds the input data.
-     * @param response The channel that allows us to respond to the request.
+     * @param service       The service handling the request.
+     * @param excessPath    The excess of the path originally requested.
+     * @param request       The request which holds the input data.
+     * @param response      The channel that allows us to respond to the request.
      * @throws IOException              If the request was malformed.
      * @throws IllegalArgumentException If required parameters are missing.
      */
-    public ServiceContext(WebService service, @NotNull HttpServletRequest request, @NotNull HttpServletResponse response)
+    public ServiceContext(WebService service, @NotNull String excessPath, @NotNull HttpServletRequest request, @NotNull HttpServletResponse response)
             throws IOException, IllegalArgumentException {
+        this.excessPath = excessPath;
         this.request = request;
         this.response = response;
 
@@ -76,6 +80,14 @@ public final class ServiceContext {
         } catch (IOException ignored) {
             // NO-OP
         }
+    }
+
+    /**
+     * @return The excess of the path originally requested.
+     */
+    @NotNull
+    public String getExcessPath() {
+        return excessPath;
     }
 
     /**
