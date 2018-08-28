@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * A generic superclass for service builders, such as views or actions.
@@ -66,6 +67,9 @@ public class ServiceBuilder {
      * Whether the data of this web page shouldn't be cached.
      */
     protected boolean varies = false;
+
+    @NotNull
+    protected Predicate<String> subdirectoryAccepted = any -> false;
 
     /**
      * The action to take when this service is run.
@@ -175,6 +179,17 @@ public class ServiceBuilder {
     }
 
     /**
+     * Describes what subdirectories can be used for views.
+     *
+     * @param predicate The predicate to apply.
+     * @return The builder.
+     */
+    public ServiceBuilder subdirectoryAccepted(Predicate<String> predicate) {
+        this.subdirectoryAccepted = predicate;
+        return this;
+    }
+
+    /**
      * Creates a service from the provided data.
      *
      * @return The created service.
@@ -198,7 +213,9 @@ public class ServiceBuilder {
 
             @Override
             public void performAction(ServiceContext context) {
-                if (context.authenticated(commandLevel))
+                if (!context.getExcessPath().isEmpty() && !subdirectoryAccepted.test(context.getExcessPath()))
+                    context.error(HttpServletResponse.SC_NOT_FOUND);
+                else if (context.authenticated(commandLevel))
                     action.accept(context);
                 else
                     context.error(HttpServletResponse.SC_UNAUTHORIZED);
@@ -264,7 +281,10 @@ public class ServiceBuilder {
 
         @Override
         public void performAction(ServiceContext context) {
-            context.send(documentation);
+            if (!context.getExcessPath().isEmpty() && !subdirectoryAccepted.test(context.getExcessPath()))
+                context.error(HttpServletResponse.SC_NOT_FOUND);
+            else
+                context.send(documentation);
         }
     }
 }

@@ -12,8 +12,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 /**
  * A context object that contains all information a service needs, including the session.
@@ -77,6 +79,82 @@ public final class ServiceContext {
             JsonWriter writer = new JsonWriter(response.getWriter());
             writer.setLenient(true);
             Streams.write(json, writer);
+        } catch (IOException ignored) {
+            // NO-OP
+        }
+    }
+
+    /**
+     * Send a stream's content as a response.
+     *
+     * @param stream The InputStream to read.
+     */
+    public void send(InputStream stream) {
+        try {
+            IOUtils.copy(stream, response.getWriter(), response.getCharacterEncoding());
+        } catch (IOException ignored) {
+            // NO-OP
+        }
+    }
+
+    /**
+     * Send a byte array as a response.
+     *
+     * @param bytes The byte[] to read.
+     */
+    public void send(byte[] bytes) {
+        try {
+            IOUtils.write(bytes, response.getWriter(), response.getCharacterEncoding());
+        } catch (IOException ignored) {
+            // NO-OP
+        }
+    }
+
+    /**
+     * Send a string as a response.
+     *
+     * @param string The String to read.
+     */
+    public void send(String string) {
+        try {
+            IOUtils.write(string, response.getWriter());
+        } catch (IOException ignored) {
+            // NO-OP
+        }
+    }
+
+    /**
+     * Send a resource as a response.
+     *
+     * @param resource The resource to load.
+     * @param clazz The classloader to load from.
+     * @param mapper The mapper to transform the resource after loaded.
+     */
+    public void send(String resource, Class<?> clazz, UnaryOperator<String> mapper) {
+        try {
+            String read = IOUtils.resourceToString(resource, Charset.defaultCharset(), clazz.getClassLoader());
+            send(mapper.apply(read));
+        } catch (IOException ignored) {
+            // NO-OP
+        }
+    }
+
+    /**
+     * Send a resource directly as a response.
+     *
+     * @param resource The resource to load.
+     * @param clazz The classloader to load from.
+     */
+    public void send(String resource, Class<?> clazz) {
+        send(resource, clazz, UnaryOperator.identity());
+    }
+
+    /**
+     * @param errorCode The error code to send back.
+     */
+    public void error(int errorCode) {
+        try {
+            response.sendError(errorCode);
         } catch (IOException ignored) {
             // NO-OP
         }
@@ -169,17 +247,6 @@ public final class ServiceContext {
     @NotNull
     public HttpSession getSession() {
         return session;
-    }
-
-    /**
-     * @param errorCode The error code to send back.
-     */
-    public void error(int errorCode) {
-        try {
-            response.sendError(errorCode);
-        } catch (IOException ignored) {
-            // NO-OP
-        }
     }
 
     /**
