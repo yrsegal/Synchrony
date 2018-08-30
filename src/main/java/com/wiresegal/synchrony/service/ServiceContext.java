@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.function.UnaryOperator;
@@ -127,17 +129,40 @@ public final class ServiceContext {
     /**
      * Send a resource as a response.
      *
+     * @param resource The loaded resource.
+     */
+    public void send(URL resource) {
+        send(resource, UnaryOperator.identity());
+    }
+
+    /**
+     * Send a resource as a response.
+     *
+     * @param resource The loaded resource.
+     * @param mapper The mapper to transform the resource after loaded.
+     */
+    public void send(URL resource, UnaryOperator<String> mapper) {
+        try {
+            if (resource == null)
+                error(HttpServletResponse.SC_NOT_FOUND);
+            else {
+                String read = IOUtils.toString(resource, Charset.defaultCharset());
+                send(mapper.apply(read));
+            }
+        } catch (IOException ignored) {
+            error(HttpServletResponse.SC_NOT_FOUND);
+        }
+    }
+
+    /**
+     * Send a resource as a response.
+     *
      * @param resource The resource to load.
      * @param clazz The classloader to load from.
      * @param mapper The mapper to transform the resource after loaded.
      */
     public void send(String resource, Class<?> clazz, UnaryOperator<String> mapper) {
-        try {
-            String read = IOUtils.resourceToString(resource, Charset.defaultCharset(), clazz.getClassLoader());
-            send(mapper.apply(read));
-        } catch (IOException ignored) {
-            error(HttpServletResponse.SC_NOT_FOUND);
-        }
+        send(resource(resource, clazz), mapper);
     }
 
     /**
@@ -149,6 +174,7 @@ public final class ServiceContext {
     public void send(String resource, ServletContext ctx) {
         send(resource, ctx, UnaryOperator.identity());
     }
+
     /**
      * Send a resource as a response.
      *
@@ -157,12 +183,7 @@ public final class ServiceContext {
      * @param mapper The mapper to transform the resource after loaded.
      */
     public void send(String resource, ServletContext ctx, UnaryOperator<String> mapper) {
-        try {
-            String read = IOUtils.toString(ctx.getResource(resource), Charset.defaultCharset());
-            send(mapper.apply(read));
-        } catch (IOException ignored) {
-            error(HttpServletResponse.SC_NOT_FOUND);
-        }
+        send(resource(resource, ctx), mapper);
     }
 
     /**
@@ -173,6 +194,18 @@ public final class ServiceContext {
      */
     public void send(String resource, Class<?> clazz) {
         send(resource, clazz, UnaryOperator.identity());
+    }
+
+    public URL resource(String resource, ServletContext ctx) {
+        try {
+            return ctx.getResource(resource);
+        } catch (MalformedURLException e) {
+            return null;
+        }
+    }
+
+    public URL resource(String resource, Class clazz) {
+        return clazz.getResource(resource);
     }
 
     /**
