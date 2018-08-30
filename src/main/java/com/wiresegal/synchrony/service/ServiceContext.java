@@ -81,7 +81,7 @@ public final class ServiceContext {
             writer.setLenient(true);
             Streams.write(json, writer);
         } catch (IOException ignored) {
-            // NO-OP
+            error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -94,7 +94,7 @@ public final class ServiceContext {
         try {
             IOUtils.copy(stream, response.getWriter(), response.getCharacterEncoding());
         } catch (IOException ignored) {
-            // NO-OP
+            error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -107,7 +107,7 @@ public final class ServiceContext {
         try {
             IOUtils.write(bytes, response.getWriter(), response.getCharacterEncoding());
         } catch (IOException ignored) {
-            // NO-OP
+            error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -120,7 +120,7 @@ public final class ServiceContext {
         try {
             IOUtils.write(string, response.getWriter());
         } catch (IOException ignored) {
-            // NO-OP
+            error(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -136,7 +136,7 @@ public final class ServiceContext {
             String read = IOUtils.resourceToString(resource, Charset.defaultCharset(), clazz.getClassLoader());
             send(mapper.apply(read));
         } catch (IOException ignored) {
-            // NO-OP
+            error(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 
@@ -161,7 +161,7 @@ public final class ServiceContext {
             String read = IOUtils.toString(ctx.getResource(resource), Charset.defaultCharset());
             send(mapper.apply(read));
         } catch (IOException ignored) {
-            // NO-OP
+            error(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 
