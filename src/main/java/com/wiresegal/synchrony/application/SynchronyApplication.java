@@ -182,8 +182,8 @@ public abstract class SynchronyApplication extends HttpServlet {
         while (!trueRequest.isEmpty() && !options.containsKey(trueRequest)) {
             int pos = trueRequest.lastIndexOf('/');
             if (pos > 0) {
-                trueRequest = trueRequest.substring(0, pos);
                 excessPath = trueRequest.substring(pos) + excessPath;
+                trueRequest = trueRequest.substring(0, pos);
             } else {
                 resp.sendError(HttpServletResponse.SC_NOT_FOUND);
                 return;
