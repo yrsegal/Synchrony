@@ -8,6 +8,7 @@ import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -143,6 +144,31 @@ public final class ServiceContext {
      * Send a resource directly as a response.
      *
      * @param resource The resource to load.
+     * @param ctx The context to load from.
+     */
+    public void send(String resource, ServletContext ctx) {
+        send(resource, ctx, UnaryOperator.identity());
+    }
+    /**
+     * Send a resource as a response.
+     *
+     * @param resource The resource to load.
+     * @param ctx The context to load from.
+     * @param mapper The mapper to transform the resource after loaded.
+     */
+    public void send(String resource, ServletContext ctx, UnaryOperator<String> mapper) {
+        try {
+            String read = IOUtils.toString(ctx.getResource(resource), Charset.defaultCharset());
+            send(mapper.apply(read));
+        } catch (IOException ignored) {
+            // NO-OP
+        }
+    }
+
+    /**
+     * Send a resource directly as a response.
+     *
+     * @param resource The resource to load.
      * @param clazz The classloader to load from.
      */
     public void send(String resource, Class<?> clazz) {
@@ -247,6 +273,11 @@ public final class ServiceContext {
     @NotNull
     public HttpSession getSession() {
         return session;
+    }
+
+    @NotNull
+    public ServletContext getContext() {
+        return request.getServletContext();
     }
 
     /**
