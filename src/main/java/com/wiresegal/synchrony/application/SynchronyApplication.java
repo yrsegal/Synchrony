@@ -9,6 +9,7 @@ import com.wiresegal.synchrony.database.DatabaseObject;
 import com.wiresegal.synchrony.database.DatabaseTypes;
 import com.wiresegal.synchrony.service.ServiceContext;
 import com.wiresegal.synchrony.service.WebService;
+import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Connection;
 
@@ -19,6 +20,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -176,6 +180,19 @@ public abstract class SynchronyApplication extends HttpServlet {
             requestKey = requestKey.substring(1);
         if (requestKey.endsWith("/"))
             requestKey = requestKey.substring(0, requestKey.length() - 1);
+
+        // Expose raw included resources
+        if (!requestKey.startsWith("WEB-INF")) try {
+            URL url = req.getServletContext().getResource(requestKey);
+            if (url != null) {
+                try (InputStream stream = url.openStream()) {
+                    IOUtils.copy(stream, resp.getOutputStream());
+                    return;
+                }
+            }
+        } catch (MalformedURLException e) {
+            // NO-OP
+        }
 
         String excessPath = "";
         String trueRequest = requestKey;
