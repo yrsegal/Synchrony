@@ -9,6 +9,7 @@ import com.wiresegal.synchrony.database.DatabaseObject;
 import com.wiresegal.synchrony.database.DatabaseTypes;
 import com.wiresegal.synchrony.service.ServiceContext;
 import com.wiresegal.synchrony.service.WebService;
+import eu.medsea.mimeutil.MimeUtil;
 import org.apache.commons.io.IOUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Connection;
@@ -187,6 +188,12 @@ public abstract class SynchronyApplication extends HttpServlet {
             if (url != null) {
                 try (InputStream stream = url.openStream()) {
                     IOUtils.copy(stream, resp.getOutputStream());
+                    resp.setContentType(MimeUtil.getPreferedMimeType(
+                            req.getContentType(),
+                            ((Collection<?>) MimeUtil.getMimeTypes(url)).stream()
+                                    .map(Object::toString)
+                                    .collect(Collectors.joining()))
+                            .getMediaType());
                     return;
                 }
             }
