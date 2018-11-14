@@ -46,6 +46,16 @@ public class Authenticator extends AbstractDatabaseObject {
     }
 
     /**
+     * Gets the level this account authenticator holds.
+     *
+     * @return The authentication level to give this account.
+     */
+    @NotNull
+    public AuthenticationLevel getAuthenticationLevel() {
+        return auth;
+    }
+
+    /**
      * Changes the password, and re-hashes and salts it.
      *
      * @param pwd The password to change to.
@@ -60,12 +70,9 @@ public class Authenticator extends AbstractDatabaseObject {
      *
      * @param email The email trying to log in.
      * @param pwd   The password you are trying to use.
-     * @return The level that email and password gave you.
+     * @return Whether authentication was successful.
      */
-    @NotNull
-    public AuthenticationLevel authenticate(@NotNull String email, @NotNull String pwd) {
-        if (ps != null && this.email.equals(email) && BCrypt.checkpw(pwd, ps))
-            return auth;
-        return AuthenticationLevel.NONE;
+    public boolean authenticate(@NotNull String email, @NotNull String pwd) {
+        return ps != null && this.email.equals(email) && BCrypt.checkpw(pwd, ps);
     }
 }

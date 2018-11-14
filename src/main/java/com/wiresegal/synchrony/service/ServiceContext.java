@@ -33,6 +33,10 @@ public final class ServiceContext {
     @NotNull
     private final HttpServletResponse response;
 
+    private final long userId;
+    @Nullable
+    private final String authUsername;
+
     @NotNull
     private final Map<String, String> parameterValues;
     @NotNull
@@ -48,7 +52,7 @@ public final class ServiceContext {
      * @throws IOException              If the request was malformed.
      * @throws IllegalArgumentException If required parameters are missing.
      */
-    public ServiceContext(WebService service, @NotNull String excessPath, @NotNull HttpServletRequest request, @NotNull HttpServletResponse response)
+    public ServiceContext(WebService service, @NotNull String excessPath, @NotNull HttpServletRequest request, @NotNull HttpServletResponse response, long userId, @Nullable String authUsername)
             throws IOException, IllegalArgumentException {
         this.excessPath = excessPath;
         this.request = request;
@@ -60,6 +64,9 @@ public final class ServiceContext {
         this.parameterValues = parameters;
         this.body = IOUtils.toString(request.getInputStream(), Charset.defaultCharset());
         this.session = request.getSession();
+
+        this.userId = userId;
+        this.authUsername = authUsername;
     }
 
     /**
@@ -241,6 +248,21 @@ public final class ServiceContext {
     @NotNull
     public HttpServletResponse getResponse() {
         return response;
+    }
+
+    /**
+     * @return The user making the request, or -1 if not authenticated.
+     */
+    public long getUserId() {
+        return userId;
+    }
+
+    /**
+     * @return The user making the request, or null if not authenticated.
+     */
+    @Nullable
+    public String getAuthUsername() {
+        return authUsername;
     }
 
     /**

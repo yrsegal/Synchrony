@@ -146,6 +146,9 @@ public abstract class SynchronyApplication extends HttpServlet {
     private void executeService(Connection.Method method, HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
 
+        long userId = -1;
+        String requestUser = null;
+
         String authorizationHeader = req.getHeader("Authorization");
         if (authorizationHeader != null) {
             Matcher result = AUTHORIZATION.matcher(authorizationHeader);
@@ -154,25 +157,37 @@ public abstract class SynchronyApplication extends HttpServlet {
                 String b64 = result.group(1);
                 String[] userData = new String(Base64.getDecoder().decode(b64)).split(":");
                 if (userData.length == 2) {
-                    String email = userData[0];
+                    String username = userData[0];
                     String pass = userData[1];
 
                     HttpSession session = req.getSession();
                     Object l = session.getAttribute("auth");
                     AuthenticationLevel level = l instanceof AuthenticationLevel ? (AuthenticationLevel) l : NONE;
 
-                    Optional<AuthenticationLevel> auth = authenticators.stream()
-                            .map(authenticator -> authenticator.authenticate(email, pass))
-                            .filter(authLevel -> authLevel.compareTo(NONE) > 0)
+                    Optional<Authenticator> auth = authenticators.stream()
+                            .filter(authenticator -> authenticator.authenticate(username, pass))
+                            .filter(authenticator -> authenticator.getAuthenticationLevel().compareTo(NONE) > 0)
                             .findFirst();
                     if (auth.isPresent()) {
-                        if (auth.get().compareTo(level) > 0)
-                            session.setAttribute("auth", auth.get());
+                        Authenticator authenticated = auth.get();
+                        if (authenticated.getAuthenticationLevel().compareTo(level) > 0)
+                            session.setAttribute("auth", authenticated.getAuthenticationLevel());
+                        session.setAttribute("user", userId = authenticated.id());
+                        session.setAttribute("username", requestUser = username);
                     } else {
                         resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
                         return;
                     }
                 }
+            }
+        }
+
+        if (requestUser == null) {
+            HttpSession session = req.getSession(false);
+            if (session != null) {
+                Object usernameData = session.getAttribute("username");
+                if (usernameData instanceof String)
+                    requestUser = (String) usernameData;
             }
         }
 
@@ -187,13 +202,14 @@ public abstract class SynchronyApplication extends HttpServlet {
             URL url = req.getServletContext().getResource(requestKey);
             if (url != null) {
                 try (InputStream stream = url.openStream()) {
-                    IOUtils.copy(stream, resp.getOutputStream());
                     resp.setContentType(MimeUtil.getPreferedMimeType(
                             req.getContentType(),
                             ((Collection<?>) MimeUtil.getMimeTypes(url)).stream()
                                     .map(Object::toString)
                                     .collect(Collectors.joining()))
                             .getMediaType());
+
+                    IOUtils.copy(stream, resp.getOutputStream());
                     return;
                 }
             }
@@ -235,7 +251,7 @@ public abstract class SynchronyApplication extends HttpServlet {
         }
 
         try {
-            ServiceContext context = new ServiceContext(handler, excessPath, req, resp);
+            ServiceContext context = new ServiceContext(handler, excessPath, req, resp, userId, requestUser);
             handler.performAction(context);
         } catch (IllegalArgumentException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST);
