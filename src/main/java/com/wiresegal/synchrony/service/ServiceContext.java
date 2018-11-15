@@ -227,6 +227,17 @@ public final class ServiceContext {
     }
 
     /**
+     * @param statusCode The status code to report.
+     */
+    public void status(int statusCode) {
+        int statusClass = statusCode / 100;
+        if (statusClass == 5 || statusClass == 4)
+            error(statusCode);
+        else
+            response.setStatus(statusCode);
+    }
+
+    /**
      * @return The excess of the path originally requested.
      */
     @NotNull
@@ -276,33 +287,63 @@ public final class ServiceContext {
 
     /**
      * @param key The parameter key to get
-     * @return The parameter value, or -1 if null.
+     * @param defaultValue The default value to return if no parameter value exists or the parameter is null.
+     * @return The parameter value.
      */
-    public int getIntParameter(@NotNull String key) {
-        String data = getParameter(key);
-        if (data == null)
-            return -1;
-
-        try {
-            return Integer.parseInt(data);
-        } catch (NumberFormatException e) {
-            return -1;
-        }
+    @NotNull
+    public String getParameter(@NotNull String key, @NotNull String defaultValue) {
+        String value = parameterValues.getOrDefault(key, defaultValue);
+        return value == null ? defaultValue : value;
     }
 
     /**
      * @param key The parameter key to get
      * @return The parameter value, or -1 if null.
      */
-    public long getLongParameter(@NotNull String key) {
+    public int getIntParameter(@NotNull String key) {
+        return getIntParameter(key, -1);
+    }
+
+    /**
+     * @param key The parameter key to get
+     * @param defaultValue The default value to return if no parameter value exists or the parameter is null.
+     * @return The parameter value, or {@code defaultValue} if null.
+     */
+    public int getIntParameter(@NotNull String key, int defaultValue) {
         String data = getParameter(key);
         if (data == null)
-            return -1;
+            return defaultValue;
+
+        try {
+            return Integer.parseInt(data);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+
+    /**
+     * @param key The parameter key to get
+     * @return The parameter value, or -1 if null.
+     */
+    public long getLongParameter(@NotNull String key) {
+        return getLongParameter(key, -1);
+    }
+
+    /**
+     * @param key The parameter key to get
+     * @param defaultValue The default value to return if no parameter value exists or the parameter is null.
+     * @return The parameter value, or {@code defaultValue} if null.
+     */
+    public long getLongParameter(@NotNull String key, long defaultValue) {
+        String data = getParameter(key);
+        if (data == null)
+            return defaultValue;
 
         try {
             return Long.parseLong(data);
         } catch (NumberFormatException e) {
-            return -1;
+            return defaultValue;
         }
     }
 
